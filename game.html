@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เกมหาของแบบรอบ</title>
+<style>
+  body { font-family: Arial; text-align: center; background: #071026; color: #fff; }
+  #webcam-container { margin: 20px auto; width: 300px; height: 300px; border: 2px solid #6ef0c3; }
+  #webcam-container canvas { width: 100%; height: 100%; }
+  #label-container div { margin: 4px 0; font-size: 16px; }
+  #item-display { font-size: 24px; margin: 12px; color: #6ef0c3; }
+  #score-display, #time-display { font-size: 20px; margin: 8px; }
+  #effect { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 48px; color: #ffff00; display: none; pointer-events: none; }
+  button { padding: 10px 15px; font-size: 16px; cursor: pointer; border-radius: 6px; border: none; background: #6ef0c3; color: #071026; }
+</style>
+</head>
+<body>
+
+<h2>เกมหาของแบบรอบ</h2>
+<button onclick="startGame()">เริ่มเกม</button>
+<div id="item-display">...</div>
+<div id="score-display">คะแนน: 0</div>
+<div id="time-display">เวลา: 10 วินาที</div>
+<div id="webcam-container"></div>
+<div id="label-container"></div>
+<div id="effect">✅!</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+<script>
+const URL = "https://siraphat769.github.io/tm-dodge-model/"; // โมเดลของคุณ
+let model, webcam, labelContainer, maxPredictions;
+let currentItem = "";
+let score = 0;
+let gameRunning = false;
+
+const roundTime = 10; // เวลาแต่ละรอบ (วินาที)
+let timeLeft = roundTime;
+let roundInterval;
+
+async function init() {
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
+
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
+
+    webcam = new tmImage.Webcam(300, 300, true);
+    await webcam.setup();
+    await webcam.play();
+    window.requestAnimationFrame(loop);
+
+    const webcamContainer = document.getElementById("webcam-container");
+    webcamContainer.innerHTML = "";
+    webcamContainer.appendChild(webcam.canvas);
+
+    labelContainer = document.getElementById("label-container");
+    labelContainer.innerHTML = "";
+    for (let i = 0; i < maxPredictions; i++) {
+        labelContainer.appendChild(document.createElement("div"));
+    }
+}
+
+// เริ่มเกม
+function startGame() {
+    if (!model) {
+        init().then(() => {
+            beginRound();
+        });
+    } else {
+        beginRound();
+    }
+    score = 0;
+    document.getElementById("score-display").innerText = "คะแนน: " + score;
+}
+
+// เริ่มรอบใหม่
+function beginRound() {
+    gameRunning = true;
+    pickNewItem();
+    timeLeft = roundTime;
+    document.getElementById("time-display").innerText = "เวลา: " + timeLeft + " วินาที";
+
+    clearInterval(roundInterval);
+    roundInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById("time-display").innerText = "เวลา: " + timeLeft + " วินาที";
+        if (timeLeft <= 0) {
+            pickNewItem(); // เปลี่ยนโจทย์อัตโนมัติเมื่อหมดเวลา
+            timeLeft = roundTime;
+        }
+    }, 1000);
+}
+
+// เลือกสิ่งของใหม่แบบสุ่ม
+function pickNewItem() {
+    const classNames = model.getClassLabels();
+    currentItem = classNames[Math.floor(Math.random() * classNames.length)];
+    document.getElementById("item-display").innerText = "หาสิ่งของ: " + currentItem;
+}
+
+// เอฟเฟกต์เก็บของสำเร็จ
+function showEffect() {
+    const effect = document.getElementById("effect");
+    effect.style.display = "block";
+    setTimeout(() => { effect.style.display = "none"; }, 500);
+}
+
+// ทำนายจากกล้องและตรวจสอบ
+async function loop() {
+    webcam.update();
+    if (model && gameRunning) {
+        const prediction = await model.predict(webcam.canvas);
+
+        // แสดงผล
+        for (let i = 0; i < maxPredictions; i++) {
+            const classPrediction =
+                prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(1) + "%";
+            labelContainer.childNodes[i].innerHTML = classPrediction;
+        }
+
+        // ตรวจสอบว่าผู้เล่นถือสิ่งของถูกต้อง
+        prediction.forEach(p => {
+            if (p.className === currentItem && p.probability > 0.7) {
+                score++;
+                document.getElementById("score-display").innerText = "คะแนน: " + score;
+                showEffect(); // เอฟเฟกต์
+                pickNewItem(); // เปลี่ยนโจทย์ทันที
+                timeLeft = roundTime; // รีเซ็ตรอบใหม่
+            }
+        });
+    }
+
+    window.requestAnimationFrame(loop);
+}
+
+init();
+</script>
+
+</body>
+</html>
