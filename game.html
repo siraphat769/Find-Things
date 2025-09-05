@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<h2>เกมหาของแบบรอบ</h2>
+<h2>เกมหาของแบบรอบ (โมเดลใหม่ GitHub)</h2>
 <button onclick="startGame()">เริ่มเกม</button>
 <div id="item-display">...</div>
 <div id="score-display">คะแนน: 0</div>
@@ -30,7 +30,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
 <script>
-const URL = "https://siraphat769.github.io/tm-dodge-model/"; // โมเดลของคุณ
+// โหลดโมเดลจากโฟลเดอร์ใน GitHub Pages
+const URL = "tm-model/"; // โฟลเดอร์โมเดลใน GitHub Pages
+
 let model, webcam, labelContainer, maxPredictions;
 let currentItem = "";
 let score = 0;
@@ -63,7 +65,6 @@ async function init() {
     }
 }
 
-// เริ่มเกม
 function startGame() {
     if (!model) {
         init().then(() => {
@@ -76,7 +77,6 @@ function startGame() {
     document.getElementById("score-display").innerText = "คะแนน: " + score;
 }
 
-// เริ่มรอบใหม่
 function beginRound() {
     gameRunning = true;
     pickNewItem();
@@ -94,21 +94,18 @@ function beginRound() {
     }, 1000);
 }
 
-// เลือกสิ่งของใหม่แบบสุ่ม
 function pickNewItem() {
     const classNames = model.getClassLabels();
     currentItem = classNames[Math.floor(Math.random() * classNames.length)];
     document.getElementById("item-display").innerText = "หาสิ่งของ: " + currentItem;
 }
 
-// เอฟเฟกต์เก็บของสำเร็จ
 function showEffect() {
     const effect = document.getElementById("effect");
     effect.style.display = "block";
     setTimeout(() => { effect.style.display = "none"; }, 500);
 }
 
-// ทำนายจากกล้องและตรวจสอบ
 async function loop() {
     webcam.update();
     if (model && gameRunning) {
